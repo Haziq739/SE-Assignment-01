@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Payments</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Manage Payments</h1>
+
+    <!-- Resident Payment Form -->
+    <h2>Make a Payment</h2>
+    <form id="paymentForm">
+        <label for="residentId">Resident ID:</label>
+        <input type="text" id="residentId" required><br>
+
+        <label for="amount">Amount:</label>
+        <input type="number" id="amount" required><br>
+
+        <label for="paymentType">Payment Type:</label>
+        <select id="paymentType">
+            <option value="Credit Card">Credit Card</option>
+            <option value="Bank Transfer">Bank Transfer</option>
+            <option value="Cash">Cash</option>
+        </select><br>
+
+        <label for="paymentDate">Payment Date:</label>
+        <input type="date" id="paymentDate" required><br>
+
+        <button type="submit">Submit Payment</button>
+    </form>
+
+    <h2>All Payments (Admin View)</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Payment ID</th>
+                <th>Resident ID</th>
+                <th>Amount</th>
+                <th>Payment Type</th>
+                <th>Payment Date</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="paymentsTable">
+            <!-- Payments will be inserted here -->
+        </tbody>
+    </table>
+
+    <script>
+        $(document).ready(function () {
+            // Resident makes a payment
+            $('#paymentForm').submit(function (event) {
+                event.preventDefault();
+
+                const data = {
+                    residentId: $('#residentId').val(),
+                    amount: $('#amount').val(),
+                    paymentType: $('#paymentType').val(),
+                    paymentDate: $('#paymentDate').val(),
+                };
+
+                $.ajax({
+                    url: '/residents/make-payment',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(data),
+                    success: function (response) {
+                        alert('Payment Successful!');
+                        $('#paymentForm')[0].reset();
+                        fetchPayments(); // Refresh payments after submission
+                    },
+                    error: function () {
+                        alert('Error making payment');
+                    }
+                });
+            });
+
+            // Fetch all payments (Admin)
+            function fetchPayments() {
+                $.ajax({
+                    url: '/manage-payment/all-payments',
+                    type: 'GET',
+                    success: function (payments) {
+                        $('#paymentsTable').empty();
+                        payments.forEach(payment => {
+                            $('#paymentsTable').append(`
+                                <tr>
+                                    <td>${payment.id}</td>
+                                    <td>${payment.resident_id}</td>
+                                    <td>${payment.amount}</td>
+                                    <td>${payment.payment_type}</td>
+                                    <td>${payment.payment_date}</td>
+                                    <td>${payment.status || 'Pending'}</td>
+                                    <td>
+                                        <button onclick="updatePayment(${payment.id})">Approve</button>
+                                        <button onclick="deletePayment(${payment.id})">Delete</button>
+                                    </td>
+                                </tr>
+                            `);
+                        });
+                    },
+                    error: function () {
+                        alert('Error fetching payments');
+                    }
+                });
+            }
+
+            // Update Payment Status (Admin)
+            window.updatePayment = function (paymentId) {
+                $.ajax({
+                    url: `/manage-payment/update-payment/${paymentId}`,
+                    type: 'PUT',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ status: 'Approved' }),
+                    success: function () {
+                        alert('Payment Approved');
+                        fetchPayments();
+                    },
+                    error: function () {
+                        alert('Error updating payment');
+                    }
+                });
+            };
+
+            // Delete Payment (Admin)
+            window.deletePayment = function (paymentId) {
+                $.ajax({
+                    url: `/manage-payment/delete-payment/${paymentId}`,
+                    type: 'DELETE',
+                    success: function () {
+                        alert('Payment Deleted');
+                        fetchPayments();
+                    },
+                    error: function () {
+                        alert('Error deleting payment');
+                    }
+                });
+            };
+
+            fetchPayments(); // Load payments on page load
+        });
+    </script>
+</body>
+</html>
